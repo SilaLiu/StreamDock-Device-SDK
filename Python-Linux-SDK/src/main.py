@@ -186,11 +186,11 @@ def get_key_function(key_num: int, page: int):
 
 
 class StreamDockController:
-    """StreamDock设备主控制器类，负责设备管理和操作，包括支持多页切换"""
+    """StreamDock设备主控制器类,负责设备管理和操作,包括支持多页切换"""
 
     # 默认图标目录和背景图片
     DEFAULT_ICON_DIR = "../icon"
-    DEFAULT_BACKGROUND = "logo.png"
+    DEFAULT_BACKGROUND = "logo1.png"
 
     def __init__(self):
         """初始化控制器"""
@@ -218,7 +218,7 @@ class StreamDockController:
                 12: "fans.png",
                 13: "leftdoor.png",
                 14: "rightdoor.png",
-                56: "",  # 下一页（图标可根据需要设置）
+                56: "",  # 下一页
                 57: "",  # 上一页
                 64: "",
                 65: "",
@@ -263,7 +263,7 @@ class StreamDockController:
                 112: "",
                 113: ""
             },
-            3: {  # 第三页icon配置（与第一页示例相同）
+            3: {  # 第三页icon配置
                 1: "r.png",
                 2: "r.png",
                 3: "r.png",
