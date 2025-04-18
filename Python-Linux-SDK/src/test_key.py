@@ -2,13 +2,29 @@ import threading
 import time
 import os
 import logging
+import socket
 from typing import Dict, Optional, Callable
 from PIL import Image, ImageEnhance, ImageOps
 from functools import partial
 from StreamDock.DeviceManager import DeviceManager
 from StreamDock.Devices.StreamDockN1 import StreamDockN1
 
-# --------------------- 全局常量与函数定义 ---------------------
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("StreamDock")
+
+SOCKET_PATH = "/tmp/led_display.sock"
+
+def send_to_led_display(text):
+    """ 发送文本到LED显示服务 """
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(SOCKET_PATH)
+        sock.sendall(text.encode('utf-8'))
+        sock.close()
+        logger.info(f"Sent to LED: {text}")
+    except Exception as e:
+        logger.error(f"Failed to send to LED: {e}")
 
 # 三页的按键映射（物理按键与逻辑功能编号的映射）
 KEY_MAPPING = {
@@ -110,12 +126,12 @@ def get_key_function(key_num: int, page: int):
             8: "logo",
             9: "内循环",
             10: "外循环",
-            56: "下一页",         
-            57: "上一页",         
-            64: "触摸屏第1个按压",         
-            65: "触摸屏第2个按压",         
-            66: "触摸屏第3个按压",         
-            67: "触摸屏第4个按压",        
+            56: "下一页",
+            57: "上一页",
+            64: "触摸屏第1个按压",
+            65: "触摸屏第2个按压",
+            66: "触摸屏第3个按压",
+            67: "触摸屏第4个按压",
             160: "温度降低(左旋)",
             161: "温度升高(右旋)",
             80: "风速降低(左旋)",
@@ -136,12 +152,12 @@ def get_key_function(key_num: int, page: int):
             8: "logo",
             9: "向前吹",
             10: "向下吹",
-            56: "下一页",         
-            57: "上一页",         
-            64: "触摸屏第1个按压",         
-            65: "触摸屏第2个按压",         
-            66: "触摸屏第3个按压",         
-            67: "触摸屏第4个按压",        
+            56: "下一页",
+            57: "上一页",
+            64: "触摸屏第1个按压",
+            65: "触摸屏第2个按压",
+            66: "触摸屏第3个按压",
+            67: "触摸屏第4个按压",
             160: "温度降低(左旋)",
             161: "温度升高(右旋)",
             80: "风速降低(左旋)",
@@ -162,12 +178,12 @@ def get_key_function(key_num: int, page: int):
             8: "自定义8",
             9: "自定义9",
             10: "自定义10",
-            56: "下一页",         
-            57: "上一页",         
-            64: "触摸屏第1个按压",         
-            65: "触摸屏第2个按压",         
-            66: "触摸屏第3个按压",         
-            67: "触摸屏第4个按压",        
+            56: "下一页",
+            57: "上一页",
+            64: "触摸屏第1个按压",
+            65: "触摸屏第2个按压",
+            66: "触摸屏第3个按压",
+            67: "触摸屏第4个按压",
             160: "温度降低(左旋)",
             161: "温度升高(右旋)",
             80: "风速降低(左旋)",
@@ -182,15 +198,13 @@ def get_key_function(key_num: int, page: int):
     print(f"按键 {key_num} 功能: {description}")
     return (key_num, description)
 
-# --------------------- 全局函数定义结束 ---------------------
-
 
 class StreamDockController:
     """StreamDock设备主控制器类,负责设备管理和操作,包括支持多页切换"""
 
     # 默认图标目录和背景图片
     DEFAULT_ICON_DIR = "../icon"
-    DEFAULT_BACKGROUND = "logo1.png"
+    DEFAULT_BACKGROUND = "logo.png"
 
     def __init__(self):
         """初始化控制器"""
@@ -218,7 +232,7 @@ class StreamDockController:
                 12: "fans.png",
                 13: "leftdoor.png",
                 14: "rightdoor.png",
-                56: "",  # 下一页
+                56: "",  # 下一页（图标可根据需要设置）
                 57: "",  # 上一页
                 64: "",
                 65: "",
@@ -263,7 +277,7 @@ class StreamDockController:
                 112: "",
                 113: ""
             },
-            3: {  # 第三页icon配置
+            3: {  # 第三页icon配置（与第一页示例相同）
                 1: "r.png",
                 2: "r.png",
                 3: "r.png",
@@ -331,7 +345,7 @@ class StreamDockController:
         """
         if 1 <= key_num <= 500:
             self._key_event_callbacks[key_num] = callback
-            logging.debug(f"按键 {key_num} 回调已注册")
+            # logging.debug(f"按键 {key_num} 回调已注册")
         else:
             logging.warning(f"无效的按键编号: {key_num}")
 
@@ -351,23 +365,23 @@ class StreamDockController:
                     try:
                         data = device.read()
                         logging.debug(f"读取到设备数据: {data}")
-                        
+
                         key_num = None
                         status = None
-                        
+
                         if isinstance(data, tuple):
                             # 假设数据格式：(..., 'ACK', 'OK', key编号, 状态)
                             if len(data) >= 5 and data[1] == 'ACK' and data[2] == 'OK':
                                 key_num = data[3]
                                 status = data[4]
-                                
+
                         if isinstance(key_num, int):
                             if key_num in self._key_event_callbacks:
                                 logging.info(f"触发按键 {key_num} 的回调")
                                 self._key_event_callbacks[key_num](key_num, status)
                             else:
                                 logging.warning(f"未注册的按键编号: {key_num}")
-                        
+
                     except Exception as e:
                         logging.error(f"设备读取错误: {str(e)}")
                         time.sleep(0.1)
@@ -476,7 +490,7 @@ class StreamDockController:
         """
         获取资源文件的完整路径
         :param filename: 文件名
-        :return: 完整路径或 None（如果文件不存在）
+        :return: 完整路径或 None(如果文件不存在)
         """
         if not filename:
             return None
@@ -493,7 +507,7 @@ class StreamDockController:
     def change_page(self, next_page: bool):
         """
         切换页面，更新当前页号并刷新所有设备的按键图标
-        :param next_page: True 表示下一页，False 表示上一页
+        :param next_page: True 表示下一页,False 表示上一页
         """
         if next_page:
             self.current_page = (self.current_page % self.total_pages) + 1
@@ -536,7 +550,7 @@ class StreamDockApp:
                 key,
                 partial(self._on_key_press, key)
             )
-            logging.info(f"按键 {key} 回调已注册")
+            # logging.info(f"按键 {key} 回调已注册")
 
     def _on_key_press(self, key, key_num, status):
         """
@@ -555,6 +569,8 @@ class StreamDockApp:
 
         # 其它按键，调用获取功能描述函数（传入当前页面信息）
         key_num, description = get_key_function(key_num, self.controller.current_page)
+        # 发送文本到LED显示服务
+        send_to_led_display(description)
         # 此处你可以根据 description 进一步调用具体的功能处理函数
         logging.info(f"执行功能: {description}")
 
@@ -577,3 +593,4 @@ class StreamDockApp:
 if __name__ == "__main__":
     app = StreamDockApp()
     app.run()
+    
